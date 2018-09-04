@@ -1,70 +1,47 @@
 import {getColumnData} from "../../helpers";
 import {BoxrecCommonTablesClass} from "../boxrec-common-tables/boxrec-common-tables.class";
 import {Location, Record, WinLossDraw} from "../boxrec.constants";
+import {WeightDivision} from "../champions/boxrec.champions.constants";
 
 const cheerio: CheerioAPI = require("cheerio");
-let $: CheerioStatic;
 
 export class BoxrecPageSearchRow extends BoxrecCommonTablesClass {
-
-    private _alias: string;
-    private _career: string;
-    private _idName: string;
-    private _last6: string;
-    private _location: string;
-    private _record: string;
 
     constructor(boxrecBodySearchRow: string) {
         super();
         const html: string = `<table><tr>${boxrecBodySearchRow}</tr></table>`;
-        $ = cheerio.load(html);
-
-        this.parse();
+        this.$ = cheerio.load(html);
     }
 
     get alias(): string | null {
-        return BoxrecCommonTablesClass.parseAlias(this._alias);
+        return BoxrecCommonTablesClass.parseAlias(getColumnData(this.$, 2, false));
     }
 
     get career(): Array<number | null> {
-        return BoxrecCommonTablesClass.parseCareer(this._career);
+        return BoxrecCommonTablesClass.parseCareer(getColumnData(this.$, 6, false));
+    }
+
+    get division(): WeightDivision | null {
+        return BoxrecCommonTablesClass.parseDivision(getColumnData(this.$, 5, false));
     }
 
     get id(): number {
-        if (this._idName) {
-            return BoxrecCommonTablesClass.parseId(this._idName) as number;
-        }
-
-        return -1;
+        return super.parseId(getColumnData(this.$, 1)) as number;
     }
 
     get last6(): WinLossDraw[] {
-        return BoxrecCommonTablesClass.parseLast6Column(this._last6);
+        return super.parseLast6Column(getColumnData(this.$, 4));
     }
 
     get name(): string | null {
-        if (this._idName) {
-            return BoxrecCommonTablesClass.parseName(this._idName);
-        }
-
-        return null;
+        return super.parseName(getColumnData(this.$, 1));
     }
 
     get record(): Record {
-        return BoxrecCommonTablesClass.parseRecord(this._record);
+        return super.parseRecord(getColumnData(this.$, 3));
     }
 
     get residence(): Location {
-        return BoxrecCommonTablesClass.parseLocationLink(this._location);
-    }
-
-    private parse(): void {
-        this._idName = getColumnData($, 1);
-        this._alias = getColumnData($, 2, false);
-        this._record = getColumnData($, 3);
-        this._last6 = getColumnData($, 4);
-        this._division = getColumnData($, 5, false);
-        this._career = getColumnData($, 6, false);
-        this._location = getColumnData($, 7);
+        return super.parseLocationLink(getColumnData(this.$, 7));
     }
 }

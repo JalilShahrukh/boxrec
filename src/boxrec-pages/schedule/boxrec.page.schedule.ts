@@ -15,27 +15,20 @@ export class BoxrecPageSchedule {
 
     constructor(boxrecBodyString: string) {
         $ = cheerio.load(boxrecBodyString);
-        this.parse();
     }
 
     get events(): BoxrecPageEvent[] {
-        const events: BoxrecPageEvent[] = [];
-
-        for (const event of this._events) {
-            const parsedEvent: BoxrecPageEvent = new BoxrecPageEvent(event);
-            events.push(parsedEvent);
-        }
-
-        return events;
+        return this.parse().map(event => new BoxrecPageEvent(event));
     }
 
-    private parse(): void {
+    private parse(): string[] {
         // this is set up incredibly strange on BoxRec
         // so it's just a giant slew of `thead` and `tbody`
         // loop through, if `thead`, it's the new schedule
         // the last `tbody` before a `thead` is empty
         const tableChildren: Cheerio = $("table#calendarSchedule > *");
         let event: string = "";
+        const events: string[] = [];
 
         tableChildren.each((i: number, elem: CheerioElement) => {
             const el: Cheerio = $(elem);
@@ -53,12 +46,14 @@ export class BoxrecPageSchedule {
                     event += `<tbody>${el.html()}</tbody>`;
                 } else {
                     // wrap with `eventResults` to work with the events class
-                    this._events.push(`<table id="eventResults">${event}</table>`); // end of event
+                    events.push(`<table id="eventResults">${event}</table>`); // end of event
                     event = ""; // reset
                 }
             }
 
         });
+
+        return events;
     }
 
 }

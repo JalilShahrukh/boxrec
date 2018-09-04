@@ -171,7 +171,7 @@ export abstract class BoxrecCommonTablesClass {
     /**
      * @hidden
      */
-    static parseLast6Column(htmlString: string): WinLossDraw[] {
+    parseLast6Column(htmlString: string): WinLossDraw[] {
         const last6: WinLossDraw[] = [];
         const opponentLast6: Cheerio = this.$(htmlString);
 
@@ -237,7 +237,7 @@ export abstract class BoxrecCommonTablesClass {
     /**
      * @hidden
      */
-    static parseName(htmlString: string): string {
+    parseName(htmlString: string): string {
         const html: Cheerio = this.$(`<div>${htmlString}</div>`);
         let name: string = html.text();
         name = trimRemoveLineBreaks(name);
@@ -350,7 +350,7 @@ export abstract class BoxrecCommonTablesClass {
     /**
      * @hidden
      */
-    static parseRecord(htmlString: string): Record {
+    parseRecord(htmlString: string): Record {
         const record: Record = {
             draw: null,
             loss: null,
