@@ -23,7 +23,7 @@ export class BoxrecPageRatingsRow extends BoxrecCommonTablesClass {
     }
 
     get division(): WeightDivision | null {
-        if (this.hasDivision) {
+        if (this.hasMoreColumns) {
             return super.parseDivision(getColumnData(this.$, 5, false));
         }
 
@@ -94,28 +94,14 @@ export class BoxrecPageRatingsRow extends BoxrecCommonTablesClass {
         return null;
     }
 
-    private get hasDivision(): boolean {
+    // in this scenario, there could be a `division` column
+    private get hasMoreColumns(): boolean {
         // on pages where it's about a specific weight class, the division column is omitted
         return this.$(`tr:nth-child(1) td`).length === 9;
     }
 
     private get idNameColumn(): string {
         return getColumnData(this.$, 2);
-    }
-
-    /**
-     * Passing in what column to get, increases the number by 1 if the number of columns is different
-     * @param {number} columnNumber
-     * @param {boolean} returnHTML
-     * @returns {string}
-     */
-    private getColumnData(columnNumber: number, returnHTML: boolean = false): string {
-        let colNum: number = columnNumber;
-        if (this.hasDivision) {
-            colNum++;
-        }
-
-        return getColumnData(this.$, colNum, returnHTML);
     }
 
 }
