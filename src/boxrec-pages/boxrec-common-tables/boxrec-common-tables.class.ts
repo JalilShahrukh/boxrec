@@ -5,7 +5,6 @@ import {BoxingBoutOutcome} from "../event/boxrec.event.constants";
 import {BoxrecTitles} from "./boxrec-common.constants";
 
 const cheerio: CheerioAPI = require("cheerio");
-let $: CheerioStatic = cheerio.load("<div></div>");
 
 /**
  * Parses common table columns found on BoxRec pages
@@ -20,10 +19,7 @@ export abstract class BoxrecCommonTablesClass {
      * @hidden
      */
     protected _firstBoxerWeight: string = "";
-    /**
-     * @hidden
-     */
-    protected _metadata: string;
+
     /**
      * @hidden
      */
@@ -32,10 +28,7 @@ export abstract class BoxrecCommonTablesClass {
      * @hidden
      */
     protected _outcome: string = "";
-    /**
-     * @hidden
-     */
-    protected _outcomeByWayOf: string = "";
+
     /**
      * @hidden
      */
@@ -57,33 +50,22 @@ export abstract class BoxrecCommonTablesClass {
      */
     protected _secondBoxerWeight: string;
 
-    protected constructor() {
-        $ = cheerio.load("<div></div>");
-    }
+    protected $: CheerioStatic;
 
     get division(): WeightDivision | null {
         return BoxrecCommonTablesClass.parseDivision(this._division);
     }
 
-    get firstBoxerWeight(): number | null {
-        return BoxrecCommonTablesClass.parseWeight(this._firstBoxerWeight);
+    parseFirstBoxerWeight(html: string): number | null {
+        return BoxrecCommonTablesClass.parseWeight(html);
     }
 
     get judges(): BoxrecJudge[] {
-        return this.parseJudges(this._metadata);
-    }
-
-    // maybe there's additional things that people would want to sift through
-    get metadata(): string {
-        return this._metadata;
+        return this.parseJudges(this.metadata);
     }
 
     get numberOfRounds(): Array<number | null> {
         return this.parseNumberOfRounds(this._numberOfRounds);
-    }
-
-    get outcome(): WinLossDraw {
-        return BoxrecCommonTablesClass.parseOutcome(this._outcome);
     }
 
     get rating(): number | null {
@@ -91,7 +73,7 @@ export abstract class BoxrecCommonTablesClass {
     }
 
     get referee(): BoxrecBasic {
-        return BoxrecCommonTablesClass.parseReferee(this._metadata);
+        return BoxrecCommonTablesClass.parseReferee(this.metadata);
     }
 
     get result(): [WinLossDraw, BoxingBoutOutcome | string | null, BoxingBoutOutcome | string | null] {
@@ -126,7 +108,7 @@ export abstract class BoxrecCommonTablesClass {
 
     // maybe there's additional things that people would want to sift through
     get titles(): BoxrecTitles[] {
-        return BoxrecCommonTablesClass.parseTitles(this._metadata);
+        return BoxrecCommonTablesClass.parseTitles(this.metadata);
     }
 
     /**
@@ -172,7 +154,7 @@ export abstract class BoxrecCommonTablesClass {
      * @hidden
      */
     static parseId(htmlString: string): number | null {
-        const html: Cheerio = $(`<div>${htmlString}</div>`);
+        const html: Cheerio = this.$(`<div>${htmlString}</div>`);
         const href: string = html.find("a").attr("href");
 
         if (href) {
@@ -191,7 +173,7 @@ export abstract class BoxrecCommonTablesClass {
      */
     static parseLast6Column(htmlString: string): WinLossDraw[] {
         const last6: WinLossDraw[] = [];
-        const opponentLast6: Cheerio = $(htmlString);
+        const opponentLast6: Cheerio = this.$(htmlString);
 
         opponentLast6.find("div.last6").each((i: number, elem: CheerioElement) => {
             const className: string = elem.attribs.class;
@@ -216,14 +198,14 @@ export abstract class BoxrecCommonTablesClass {
      * @hidden
      * @returns {Location}
      */
-    static parseLocationLink(htmlString: string, linkToLookAt: number = 0): Location {
+    parseLocationLink(htmlString: string, linkToLookAt: number = 0): Location {
         const location: Location = {
             country: null,
             id: null,
             region: null,
             town: null,
         };
-        const html: Cheerio = $(`<div>${htmlString}</div>`);
+        const html: Cheerio = this.$(`<div>${htmlString}</div>`);
         const links: Cheerio = html.find("a");
 
         if (links.get(linkToLookAt)) {
@@ -256,7 +238,7 @@ export abstract class BoxrecCommonTablesClass {
      * @hidden
      */
     static parseName(htmlString: string): string {
-        const html: Cheerio = $(`<div>${htmlString}</div>`);
+        const html: Cheerio = this.$(`<div>${htmlString}</div>`);
         let name: string = html.text();
         name = trimRemoveLineBreaks(name);
 
@@ -270,9 +252,9 @@ export abstract class BoxrecCommonTablesClass {
     /**
      * @hidden
      */
-    static parseNameAndId(htmlString: string): BoxrecBasic {
+    parseNameAndId(htmlString: string): BoxrecBasic {
         if (trimRemoveLineBreaks(htmlString) !== "TBA") {
-            const html: Cheerio = $(`<div>${htmlString}</div>`);
+            const html: Cheerio = this.$(`<div>${htmlString}</div>`);
             const href: string = html.find("a").attr("href");
             const regex: RegExp = /(\d+)$/;
             if (href) {
@@ -326,7 +308,7 @@ export abstract class BoxrecCommonTablesClass {
      */
     static parseOutcomeByWayOf(htmlString: string, parseText: boolean = false): BoxingBoutOutcome | string | null {
         if (trimRemoveLineBreaks(htmlString)) {
-            const html: Cheerio = $(`<div>${htmlString}</div>`);
+            const html: Cheerio = this.$(`<div>${htmlString}</div>`);
             html.find("div").remove();
             let outcomeByWayOf: string = html.text();
             outcomeByWayOf = outcomeByWayOf.trim();
@@ -344,8 +326,8 @@ export abstract class BoxrecCommonTablesClass {
     /**
      * @hidden
      */
-    static parseRating(htmlString: string): number | null {
-        const html: Cheerio = $(htmlString);
+    parseRating(htmlString: string): number | null {
+        const html: Cheerio = this.$(htmlString);
         let rating: number | null = null;
         const starRating: Cheerio = html.find(".starRating");
 
@@ -374,7 +356,7 @@ export abstract class BoxrecCommonTablesClass {
             loss: null,
             win: null,
         };
-        const html: Cheerio = $(`<div>${htmlString}</div>`);
+        const html: Cheerio = this.$(`<div>${htmlString}</div>`);
 
         if (html.find(".textWon") && !htmlString.includes("debut")) { // has fought/or fighter picked
             record.win = parseInt(html.find(".textWon").text(), 10);
@@ -393,19 +375,19 @@ export abstract class BoxrecCommonTablesClass {
      * @hidden
      */
     static parseReferee(htmlString: string): BoxrecBasic {
-        const html: Cheerio = $(`<div>${htmlString}</div>`);
+        const html: Cheerio = this.$(`<div>${htmlString}</div>`);
         const referee: BoxrecBasic = {
             id: null,
             name: null,
         };
 
         html.find("a").each((index: number, elem: CheerioElement) => {
-            const href: string = $(elem).get(0).attribs.href;
+            const href: string = this.$(elem).get(0).attribs.href;
             const matches: RegExpMatchArray | null = href.match(/referee\/(\d+)$/);
 
             if (matches && matches[1]) {
                 const id: number = parseInt(matches[1], 10);
-                let name: string = $(elem).text();
+                let name: string = this.$(elem).text();
                 name = trimRemoveLineBreaks(name);
 
                 referee.id = id;
@@ -421,18 +403,18 @@ export abstract class BoxrecCommonTablesClass {
      */
     static parseTitles(htmlString: string): BoxrecTitles[] {
         const titles: BoxrecTitles[] = [];
-        const html: Cheerio = $(`<div>${htmlString}</div>`);
+        const html: Cheerio = this.$(`<div>${htmlString}</div>`);
         let titleIndexAt: number = 0;
 
         html.find("a").each((index: number, elem: CheerioElement) => {
-            const {class: className, href} = $(elem).get(0).attribs;
+            const {class: className, href} = this.$(elem).get(0).attribs;
 
             if (className && className.includes("titleLink")) {
                 const matches: RegExpMatchArray | null = href.match(/(\d+\/\w+)$/);
 
                 if (matches && matches[1]) {
                     const id: string = matches[1];
-                    let name: string = $(elem).text();
+                    let name: string = this.$(elem).text();
                     name = trimRemoveLineBreaks(name);
 
                     titles.push({
@@ -446,7 +428,7 @@ export abstract class BoxrecCommonTablesClass {
                 if (matches) {
                     titles[titleIndexAt].supervisor = {
                         id: parseInt(matches[0], 10),
-                        name: $(elem).text(),
+                        name: this.$(elem).text(),
                     };
                 }
             }
@@ -473,27 +455,22 @@ export abstract class BoxrecCommonTablesClass {
         return formattedWeight;
     }
 
-    /**
-     * @hidden
-     */
-    private outcomeByWayOf(parseText: boolean = false): BoxingBoutOutcome | string | null {
-        return BoxrecCommonTablesClass.parseOutcomeByWayOf(this._outcomeByWayOf, parseText);
-    }
+
 
     /**
      * @hidden
      */
     private parseJudges(htmlString: string): BoxrecJudge[] {
-        const html: Cheerio = $(`<div>${htmlString}</div>`);
+        const html: Cheerio = this.$(`<div>${htmlString}</div>`);
         const judges: BoxrecJudge[] = [];
 
         html.find("a").each((index: number, elem: CheerioElement) => {
-            const href: string = $(elem).get(0).attribs.href;
+            const href: string = this.$(elem).get(0).attribs.href;
             const matches: RegExpMatchArray | null = href.match(/judge\/(\d+)$/);
 
             if (matches && matches[1]) {
                 const id: number = parseInt(matches[1], 10);
-                let name: string = $(elem).text();
+                let name: string = this.$(elem).text();
                 name = trimRemoveLineBreaks(name);
 
                 const scoreCardRegex: RegExp = /<\/a>\s(\d{1,3})-(\d{1,3})/g;

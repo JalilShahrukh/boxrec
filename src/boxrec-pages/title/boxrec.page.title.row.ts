@@ -1,40 +1,40 @@
 import {getColumnData, trimRemoveLineBreaks} from "../../helpers";
 import {BoxrecCommonTablesClass} from "../boxrec-common-tables/boxrec-common-tables.class";
-import {BoxrecBasic, Location} from "../boxrec.constants";
+import {BoxrecBasic, Location, WinLossDraw} from "../boxrec.constants";
+import {BoxingBoutOutcome} from "../event/boxrec.event.constants";
 
 const cheerio: CheerioAPI = require("cheerio");
 let $: CheerioStatic;
 
 export class BoxrecPageTitleRow extends BoxrecCommonTablesClass {
 
-    private _date: string;
-    private _firstBoxer: string;
-    private _links: string;
-    private _location: string;
+    private _links: string; // todo, works?  no tests (this._links = getColumnData(this.$, 11);)
 
     constructor(tableRowInnerHTML: string, metadataFollowingRowInnerHTML: string | null = null) {
         super();
         const html: string = `<table><tr>${tableRowInnerHTML}</tr><tr>${metadataFollowingRowInnerHTML}</tr></table>`;
-        $ = cheerio.load(html);
-
-        this.parse();
-        this.parseMetadata();
+        this.$ = cheerio.load(html);
     }
 
     get date(): string {
-        return trimRemoveLineBreaks(this._date);
+        return trimRemoveLineBreaks(getColumnData(this.$, 1, false));
     }
 
     get firstBoxer(): BoxrecBasic {
-        return BoxrecCommonTablesClass.parseNameAndId(this._firstBoxer);
+        return this.parseNameAndId(getColumnData(this.$, 2));
+    }
+
+    get firstBoxerWeight(): number | null {
+        const html: string | null = getColumnData(this.$, 3, false);
+        return html ? super.parseFirstBoxerWeight(html) : null;
     }
 
     get location(): Location {
-        return BoxrecCommonTablesClass.parseLocationLink(this._location, 1);
+        return super.parseLocationLink(getColumnData(this.$, 7), 1);
     }
 
     get numberOfRounds(): number[] {
-        const numberOfRounds: string = trimRemoveLineBreaks(this._numberOfRounds);
+        const numberOfRounds: string = trimRemoveLineBreaks(getColumnData(this.$, 9, false));
         if (numberOfRounds.includes("/")) {
             // ended early
             return numberOfRounds.split("/").map(item => parseInt(item, 10));
@@ -45,27 +45,34 @@ export class BoxrecPageTitleRow extends BoxrecCommonTablesClass {
         return [parsedNumberOfRounds, parsedNumberOfRounds];
     }
 
+    get rating(): number | null {
+        const html: string | null = getColumnData(this.$, 10);
+        return html ? super.parseRating(html) : null;
+    }
+
     get secondBoxer(): BoxrecBasic {
-        return BoxrecCommonTablesClass.parseNameAndId(this._secondBoxer);
+        return super.parseNameAndId(getColumnData(this.$, 5));
     }
 
-    private parse(): void {
-        this._date = getColumnData($, 1, false);
-        this._firstBoxer = getColumnData($, 2);
-        this._firstBoxerWeight = getColumnData($, 3, false);
-        this._outcome = getColumnData($, 4, false);
-        this._secondBoxer = getColumnData($, 5);
-        this._secondBoxerWeight = getColumnData($, 6, false);
-        this._location = getColumnData($, 7);
-        this._outcomeByWayOf = getColumnData($, 8, false);
-        this._numberOfRounds = getColumnData($, 9, false);
-        this._rating = getColumnData($, 10);
-        this._links = getColumnData($, 11);
+    get secondBoxerWeight(): number | null {
+        const html: string | null = getColumnData(this.$, 6, false);
+        return html ? super.parseFirstBoxerWeight(html) : null;
     }
 
-    private parseMetadata(): void {
-        const el: Cheerio = $(`tr:nth-child(2) td:nth-child(1)`);
-        this._metadata = el.html() || "";
+    get outcome(): WinLossDraw {
+        return BoxrecCommonTablesClass.parseOutcome(getColumnData(this.$, 4, false));
+    }
+
+    protected get metadata(): string {
+        const el: Cheerio = this.$(`tr:nth-child(2) td:nth-child(1)`);
+        return el.html() || "";
+    }
+
+    /**
+     * @hidden
+     */
+    private outcomeByWayOf(parseText: boolean = false): BoxingBoutOutcome | string | null {
+        return BoxrecCommonTablesClass.parseOutcomeByWayOf(getColumnData(this.$, 8, false), parseText);
     }
 
 }
