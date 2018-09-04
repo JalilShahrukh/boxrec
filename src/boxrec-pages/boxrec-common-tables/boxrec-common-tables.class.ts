@@ -153,7 +153,7 @@ export abstract class BoxrecCommonTablesClass {
     /**
      * @hidden
      */
-    static parseId(htmlString: string): number | null {
+    parseId(htmlString: string): number | null {
         const html: Cheerio = this.$(`<div>${htmlString}</div>`);
         const href: string = html.find("a").attr("href");
 
