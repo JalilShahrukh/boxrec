@@ -5,7 +5,7 @@ import {BoxrecPageTitleRow} from "./boxrec.page.title.row";
 
 const mockTitleInformation: string = fs.readFileSync(`${boxRecMocksModulePath}/title/mockMiddleweightWBCbelt.html`, "utf8");
 
-describe("class BoxrecPageSearch", () => {
+fdescribe("class BoxrecPageSearch", () => {
 
     let title: BoxrecPageTitle;
 
@@ -66,7 +66,7 @@ describe("class BoxrecPageSearch", () => {
 
                 it("should include the name and id of the first boxer", () => {
                     expect(mostRecentBout.firstBoxer.id).not.toBeNull();
-                    expect(mostRecentBout.firstBoxer.name).not.toBeNull();
+                    expect(mostRecentBout.firstBoxer.name).toBe("Saul Alvarez");
                 });
 
             });
@@ -75,7 +75,7 @@ describe("class BoxrecPageSearch", () => {
 
                 it("should include the name and id of the second boxer", () => {
                     expect(mostRecentBout.secondBoxer.id).not.toBeNull();
-                    expect(mostRecentBout.secondBoxer.name).not.toBeNull();
+                    expect(mostRecentBout.secondBoxer.name).toBe("Gennady Golovkin");
                 });
 
             });
