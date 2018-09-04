@@ -12,7 +12,7 @@ export class BoxrecPageSearch {
     private $: CheerioStatic;
 
     constructor(boxrecBodyString: string) {
-        this.$ = cheerio.load(boxrecBodyString);;
+        this.$ = cheerio.load(boxrecBodyString);
     }
 
     get results(): BoxrecSearch[] {

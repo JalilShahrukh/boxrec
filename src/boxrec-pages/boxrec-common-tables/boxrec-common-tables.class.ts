@@ -11,6 +11,7 @@ const cheerio: CheerioAPI = require("cheerio");
  */
 export abstract class BoxrecCommonTablesClass {
 
+    protected $: CheerioStatic;
     /**
      * @hidden
      */
@@ -19,7 +20,6 @@ export abstract class BoxrecCommonTablesClass {
      * @hidden
      */
     protected _firstBoxerWeight: string = "";
-
     /**
      * @hidden
      */
@@ -28,7 +28,6 @@ export abstract class BoxrecCommonTablesClass {
      * @hidden
      */
     protected _outcome: string = "";
-
     /**
      * @hidden
      */
@@ -50,14 +49,8 @@ export abstract class BoxrecCommonTablesClass {
      */
     protected _secondBoxerWeight: string;
 
-    protected $: CheerioStatic;
-
     get division(): WeightDivision | null {
         return BoxrecCommonTablesClass.parseDivision(this._division);
-    }
-
-    parseFirstBoxerWeight(html: string): number | null {
-        return BoxrecCommonTablesClass.parseWeight(html);
     }
 
     get judges(): BoxrecJudge[] {
@@ -134,12 +127,144 @@ export abstract class BoxrecCommonTablesClass {
     }
 
     /**
+     * @hidden
+     */
+    static parseOutcome(htmlString: string): WinLossDraw {
+        let outcome: string = htmlString;
+        outcome = outcome.trim();
+        let formattedOutcome: WinLossDraw;
+
+        switch (outcome) {
+            case "W":
+                formattedOutcome = WinLossDraw.win;
+                break;
+            case "D":
+                formattedOutcome = WinLossDraw.draw;
+                break;
+            case "L":
+                formattedOutcome = WinLossDraw.loss;
+                break;
+            case "S":
+                formattedOutcome = WinLossDraw.scheduled;
+                break;
+            default:
+                formattedOutcome = WinLossDraw.unknown;
+        }
+
+        return formattedOutcome;
+    }
+
+    /**
+     * @hidden
+     */
+    static parseOutcomeByWayOf(htmlString: string, parseText: boolean = false): BoxingBoutOutcome | string | null {
+        if (trimRemoveLineBreaks(htmlString)) {
+            const html: Cheerio = this.$(`<div>${htmlString}</div>`);
+            html.find("div").remove();
+            let outcomeByWayOf: string = html.text();
+            outcomeByWayOf = outcomeByWayOf.trim();
+
+            if (parseText) {
+                return BoxingBoutOutcome[outcomeByWayOf as any];
+            }
+
+            return outcomeByWayOf;
+        }
+
+        return null;
+    }
+
+    /**
+     * @hidden
+     */
+    static parseReferee(htmlString: string): BoxrecBasic {
+        const html: Cheerio = this.$(`<div>${htmlString}</div>`);
+        const referee: BoxrecBasic = {
+            id: null,
+            name: null,
+        };
+
+        html.find("a").each((index: number, elem: CheerioElement) => {
+            const href: string = this.$(elem).get(0).attribs.href;
+            const matches: RegExpMatchArray | null = href.match(/referee\/(\d+)$/);
+
+            if (matches && matches[1]) {
+                const id: number = parseInt(matches[1], 10);
+                let name: string = this.$(elem).text();
+                name = trimRemoveLineBreaks(name);
+
+                referee.id = id;
+                referee.name = name;
+            }
+        });
+
+        return referee;
+    }
+
+    /**
+     * @hidden
+     */
+    static parseTitles(htmlString: string): BoxrecTitles[] {
+        const titles: BoxrecTitles[] = [];
+        const html: Cheerio = this.$(`<div>${htmlString}</div>`);
+        let titleIndexAt: number = 0;
+
+        html.find("a").each((index: number, elem: CheerioElement) => {
+            const {class: className, href} = this.$(elem).get(0).attribs;
+
+            if (className && className.includes("titleLink")) {
+                const matches: RegExpMatchArray | null = href.match(/(\d+\/\w+)$/);
+
+                if (matches && matches[1]) {
+                    const id: string = matches[1];
+                    let name: string = this.$(elem).text();
+                    name = trimRemoveLineBreaks(name);
+
+                    titles.push({
+                        id, name,
+                    });
+                    titleIndexAt = titles.length - 1;
+                }
+            } else if (href.includes("supervisor")) {
+                const matches: RegExpMatchArray | null = href.match(/\d+$/);
+
+                if (matches) {
+                    titles[titleIndexAt].supervisor = {
+                        id: parseInt(matches[0], 10),
+                        name: this.$(elem).text(),
+                    };
+                }
+            }
+        });
+
+        return titles;
+    }
+
+    /**
+     * @hidden
+     */
+    static parseWeight(str: string): number | null {
+        const weight: string = str.trim();
+        let formattedWeight: number | null = null;
+
+        if (weight.length) {
+            formattedWeight = parseInt(weight, 10);
+
+            if (isNaN(parseInt(weight.slice(-1), 10))) {
+                formattedWeight += convertFractionsToNumber(weight.slice(-1));
+            }
+        }
+
+        return formattedWeight;
+    }
+
+    /**
      * Returns the boxer's division
      * This value can be missing
      * @hidden
      * @returns {WeightDivision | null}
      */
-    static parseDivision(htmlString: string): WeightDivision | null {
+    parseDivision(htmlString: string): WeightDivision | null {
         let division: string = trimRemoveLineBreaks(htmlString);
         division = division.toLowerCase();
 
@@ -148,6 +273,10 @@ export abstract class BoxrecCommonTablesClass {
         }
 
         return null;
+    }
+
+    parseFirstBoxerWeight(html: string): number | null {
+        return BoxrecCommonTablesClass.parseWeight(html);
     }
 
     /**
@@ -278,54 +407,6 @@ export abstract class BoxrecCommonTablesClass {
     /**
      * @hidden
      */
-    static parseOutcome(htmlString: string): WinLossDraw {
-        let outcome: string = htmlString;
-        outcome = outcome.trim();
-        let formattedOutcome: WinLossDraw;
-
-        switch (outcome) {
-            case "W":
-                formattedOutcome = WinLossDraw.win;
-                break;
-            case "D":
-                formattedOutcome = WinLossDraw.draw;
-                break;
-            case "L":
-                formattedOutcome = WinLossDraw.loss;
-                break;
-            case "S":
-                formattedOutcome = WinLossDraw.scheduled;
-                break;
-            default:
-                formattedOutcome = WinLossDraw.unknown;
-        }
-
-        return formattedOutcome;
-    }
-
-    /**
-     * @hidden
-     */
-    static parseOutcomeByWayOf(htmlString: string, parseText: boolean = false): BoxingBoutOutcome | string | null {
-        if (trimRemoveLineBreaks(htmlString)) {
-            const html: Cheerio = this.$(`<div>${htmlString}</div>`);
-            html.find("div").remove();
-            let outcomeByWayOf: string = html.text();
-            outcomeByWayOf = outcomeByWayOf.trim();
-
-            if (parseText) {
-                return BoxingBoutOutcome[outcomeByWayOf as any];
-            }
-
-            return outcomeByWayOf;
-        }
-
-        return null;
-    }
-
-    /**
-     * @hidden
-     */
     parseRating(htmlString: string): number | null {
         const html: Cheerio = this.$(htmlString);
         let rating: number | null = null;
@@ -370,92 +451,6 @@ export abstract class BoxrecCommonTablesClass {
 
         return record;
     }
-
-    /**
-     * @hidden
-     */
-    static parseReferee(htmlString: string): BoxrecBasic {
-        const html: Cheerio = this.$(`<div>${htmlString}</div>`);
-        const referee: BoxrecBasic = {
-            id: null,
-            name: null,
-        };
-
-        html.find("a").each((index: number, elem: CheerioElement) => {
-            const href: string = this.$(elem).get(0).attribs.href;
-            const matches: RegExpMatchArray | null = href.match(/referee\/(\d+)$/);
-
-            if (matches && matches[1]) {
-                const id: number = parseInt(matches[1], 10);
-                let name: string = this.$(elem).text();
-                name = trimRemoveLineBreaks(name);
-
-                referee.id = id;
-                referee.name = name;
-            }
-        });
-
-        return referee;
-    }
-
-    /**
-     * @hidden
-     */
-    static parseTitles(htmlString: string): BoxrecTitles[] {
-        const titles: BoxrecTitles[] = [];
-        const html: Cheerio = this.$(`<div>${htmlString}</div>`);
-        let titleIndexAt: number = 0;
-
-        html.find("a").each((index: number, elem: CheerioElement) => {
-            const {class: className, href} = this.$(elem).get(0).attribs;
-
-            if (className && className.includes("titleLink")) {
-                const matches: RegExpMatchArray | null = href.match(/(\d+\/\w+)$/);
-
-                if (matches && matches[1]) {
-                    const id: string = matches[1];
-                    let name: string = this.$(elem).text();
-                    name = trimRemoveLineBreaks(name);
-
-                    titles.push({
-                        id, name,
-                    });
-                    titleIndexAt = titles.length - 1;
-                }
-            } else if (href.includes("supervisor")) {
-                const matches: RegExpMatchArray | null = href.match(/\d+$/);
-
-                if (matches) {
-                    titles[titleIndexAt].supervisor = {
-                        id: parseInt(matches[0], 10),
-                        name: this.$(elem).text(),
-                    };
-                }
-            }
-        });
-
-        return titles;
-    }
-
-    /**
-     * @hidden
-     */
-    static parseWeight(str: string): number | null {
-        const weight: string = str.trim();
-        let formattedWeight: number | null = null;
-
-        if (weight.length) {
-            formattedWeight = parseInt(weight, 10);
-
-            if (isNaN(parseInt(weight.slice(-1), 10))) {
-                formattedWeight += convertFractionsToNumber(weight.slice(-1));
-            }
-        }
-
-        return formattedWeight;
-    }
-
-
 
     /**
      * @hidden
