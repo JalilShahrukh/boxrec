@@ -49,11 +49,6 @@ export abstract class BoxrecCommonTablesClass {
      */
     protected _secondBoxerWeight: string;
 
-    // should be overwritten by class that instantiates
-    protected get hasDivision(): boolean {
-        return false;
-    }
-
     get division(): WeightDivision | null {
         return BoxrecCommonTablesClass.parseDivision(this._division);
     }
@@ -64,21 +59,6 @@ export abstract class BoxrecCommonTablesClass {
 
     get numberOfRounds(): Array<number | null> {
         return this.parseNumberOfRounds(this._numberOfRounds);
-    }
-
-    /**
-     * Passing in what column to get, increases the number by 1 if the number of columns is different
-     * @param {number} columnNumber
-     * @param {boolean} returnHTML
-     * @returns {string}
-     */
-    protected getColumnData(columnNumber: number, returnHTML: boolean = false): string {
-        let colNum: number = columnNumber;
-        if (this.hasMoreColumns) {
-            colNum++;
-        }
-
-        return getColumnData(this.$, colNum, returnHTML);
     }
 
     get rating(): number | null {
@@ -122,6 +102,11 @@ export abstract class BoxrecCommonTablesClass {
     // maybe there's additional things that people would want to sift through
     get titles(): BoxrecTitles[] {
         return BoxrecCommonTablesClass.parseTitles(this.metadata);
+    }
+
+    // should be overwritten by class that instantiates
+    protected get hasDivision(): boolean {
+        return false;
     }
 
     /**
@@ -470,6 +455,21 @@ export abstract class BoxrecCommonTablesClass {
         }
 
         return record;
+    }
+
+    /**
+     * Passing in what column to get, increases the number by 1 if the number of columns is different
+     * @param {number} columnNumber
+     * @param {boolean} returnHTML
+     * @returns {string}
+     */
+    protected getColumnData(columnNumber: number, returnHTML: boolean = false): string {
+        let colNum: number = columnNumber;
+        if (this.hasMoreColumns) {
+            colNum++;
+        }
+
+        return getColumnData(this.$, colNum, returnHTML);
     }
 
     /**

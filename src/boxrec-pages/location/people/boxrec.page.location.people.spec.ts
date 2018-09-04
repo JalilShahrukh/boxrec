@@ -3,7 +3,7 @@ import {boxRecMocksModulePath, WinLossDraw} from "../../boxrec.constants";
 import {WeightDivision} from "../../champions/boxrec.champions.constants";
 import {Country} from "./boxrec.location.people.constants";
 import {BoxrecPageLocationPeople} from "./boxrec.page.location.people";
-import {BoxrecPageLocationPeopleRow} from "./boxrec.page.location.people.row";
+import {BoxrecPageLocationPeopleBoxerRow} from "./boxrec.page.location.people.boxer.row";
 
 const mockLocation: string = fs.readFileSync(`${boxRecMocksModulePath}/location/mockUSALocation.html`, "utf8");
 
@@ -23,10 +23,10 @@ describe("class BoxrecPageLocationPeople", () => {
 
         describe("output values", () => {
 
-            let locationOutput: BoxrecPageLocationPeopleRow;
+            let locationOutput: BoxrecPageLocationPeopleBoxerRow;
 
             beforeAll(() => {
-                locationOutput = location.boxers[1];
+                locationOutput = location.boxers[1] as BoxrecPageLocationPeopleBoxerRow;
             });
 
             describe("getter id", () => {
@@ -46,17 +46,10 @@ describe("class BoxrecPageLocationPeople", () => {
             });
 
             describe("getter division", () => {
-                const weightDivisionValues: string[] = Object.values(WeightDivision);
 
                 it("should return the boxer division", () => {
-                    location.boxers.forEach(boxer => {
-                        if (boxer.division) {
-                            expect(weightDivisionValues).toContain(boxer.division);
-                        } else {
-                            expect(boxer.division).toBeNull();
-                        }
-
-                    });
+                    const weightDivisionValues: string[] = Object.values(WeightDivision);
+                    expect(weightDivisionValues).toContain(location.boxers[1]);
                 });
 
             });

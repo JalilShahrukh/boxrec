@@ -1,8 +1,8 @@
 import {BoxrecRole} from "../../search/boxrec.search.constants";
+import {BoxrecPageLocationPeopleBoxerRow} from "./boxrec.page.location.people.boxer.row";
 import {BoxrecPageLocationPeopleRow} from "./boxrec.page.location.people.row";
 
 const cheerio: CheerioAPI = require("cheerio");
-let $: CheerioStatic;
 
 /**
  * parse a BoxRec Locate People results page
@@ -12,24 +12,35 @@ export class BoxrecPageLocationPeople {
 
     role: BoxrecRole;
 
-    private _locations: string[] = [];
+    private $: CheerioStatic;
 
     constructor(boxrecBodyString: string, role: BoxrecRole = BoxrecRole.boxer) {
-        $ = cheerio.load(boxrecBodyString);
+        this.$ = cheerio.load(boxrecBodyString);
         this.role = role;
-        this.parseLocation();
     }
 
-    get boxers(): BoxrecPageLocationPeopleRow[] {
-        return this._locations.map(item => new BoxrecPageLocationPeopleRow(item, this.role));
-    }
+    // todo change this to `people`
+    get boxers(): BoxrecPageLocationPeopleRow[] | BoxrecPageLocationPeopleBoxerRow[] {
+        return this.parseLocation().map(item => {
 
-    private parseLocation(): void {
-        const tr: Cheerio = $("table#locationsTable tbody tr");
-        tr.each((i: number, elem: CheerioElement) => {
-            const html: string = $(elem).html() || "";
-            this._locations.push(html);
+            if (this.role === BoxrecRole.boxer) {
+                return new BoxrecPageLocationPeopleBoxerRow(item);
+            }
+
+            return new BoxrecPageLocationPeopleRow(item);
         });
+    }
+
+    private parseLocation(): string[] {
+        const tr: Cheerio = this.$("table#locationsTable tbody tr");
+        const locations: string[] = [];
+
+        tr.each((i: number, elem: CheerioElement) => {
+            const html: string = this.$(elem).html() || "";
+            locations.push(html);
+        });
+
+        return locations;
     }
 
 }
