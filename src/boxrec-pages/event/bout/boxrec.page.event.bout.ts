@@ -26,7 +26,7 @@ export class BoxrecPageEventBout extends BoxrecPageEvent {
     private _ranking: string = "";
     private _rating: number;
     private _referee: string;
-    private _secondBoxerLast6: string[] = [];
+
     private _titles: string;
 
     constructor(boxrecBodyString: string) {

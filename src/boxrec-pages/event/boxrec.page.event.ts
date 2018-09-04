@@ -1,36 +1,31 @@
 import {townRegionCountryRegex, trimRemoveLineBreaks} from "../../helpers";
 import {BoxrecCommonTablesClass} from "../boxrec-common-tables/boxrec-common-tables.class";
 import {BoxrecBasic, BoxrecBoutLocation} from "../boxrec.constants";
+import {BoxrecRole} from "../search/boxrec.search.constants";
 import {BoxrecPromoter} from "./boxrec.event.constants";
 import {BoxrecPageEventBoutRow} from "./boxrec.page.event.bout.row";
 
 const cheerio: CheerioAPI = require("cheerio");
-let $: CheerioStatic;
 
 /**
  * Parse an Event page
  */
-export class BoxrecPageEvent {
+export class BoxrecPageEvent extends BoxrecCommonTablesClass {
 
-    protected _date: string | null = null;
     protected _doctor: string | null;
-    protected _location: string | null;
     protected _matchmaker: string | null;
     protected _promoter: string | null;
-    private _bouts: Array<[string, string | null]> = [];
     private _commission: string;
-    private _id: string;
     private _inspector: string | null;
     private _television: string;
 
     constructor(boxrecBodyString: string) {
-        $ = cheerio.load(boxrecBodyString);
-        this.parseEventData();
-        this.parseBouts();
+        super();
+        this.$ = cheerio.load(boxrecBodyString);
     }
 
     get bouts(): BoxrecPageEventBoutRow[] {
-        const bouts: Array<[string, string | null]> = [] = this._bouts;
+        const bouts: Array<[string, string | null]> = this.parseBouts();
         const boutsList: BoxrecPageEventBoutRow[] = [];
         bouts.forEach((val: [string, string | null]) => {
             const bout: BoxrecPageEventBoutRow = new BoxrecPageEventBoutRow(val[0], val[1]);
@@ -41,27 +36,33 @@ export class BoxrecPageEvent {
     }
 
     get commission(): string | null {
-        if (this._commission) {
-            return this._commission.trim();
+        const commission: string | void = this.parseEventData("commission");
+        if (commission) {
+            return commission.trim();
         }
 
         return null;
     }
 
     get date(): string | null {
-        if (this._date) {
-            return trimRemoveLineBreaks(this._date);
+        let date: string = this.$(this.getEventResults()).find("h2").text(); // ex. Saturday 5, May 2018
+
+        if (date) {
+            // if date hasn't been set, this will be an empty string, leave as null
+            date = new Date(date).toISOString().slice(0, 10);
+            return trimRemoveLineBreaks(date);
         }
 
-        return this._date;
+        return date;
     }
 
     get doctors(): BoxrecBasic[] {
-        const html: Cheerio = $(`<div>${this._doctor}</div>`);
+        const doctorsStr: string | void = this.parseEventData(BoxrecRole.doctor);
+        const html: Cheerio = this.$(`<div>${doctorsStr}</div>`);
         const doctors: BoxrecBasic[] = [];
 
         html.find("a").each((i: number, elem: CheerioElement) => {
-            const doctor: BoxrecBasic = BoxrecCommonTablesClass.parseNameAndId($.html(elem));
+            const doctor: BoxrecBasic = super.parseNameAndId(this.$.html(elem));
             doctors.push(doctor);
         });
 
@@ -69,15 +70,26 @@ export class BoxrecPageEvent {
     }
 
     get id(): number {
-        return parseInt(this._id, 10);
+        const wikiHref: string | null = this.$(this.getEventResults()).find("h2").next().find(".bio_closedP").parent().attr("href");
+        let id: string = "";
+
+        if (wikiHref) {
+            const wikiLink: RegExpMatchArray | null = wikiHref.match(/(\d+)$/);
+            if (wikiLink && wikiLink[1]) {
+                id = wikiLink[1];
+            }
+        }
+
+        return parseInt(id, 10);
     }
 
     get inspectors(): BoxrecBasic[] {
-        const html: Cheerio = $(`<div>${this._inspector}</div>`);
+        const inspectorStr: string | void = this.parseEventData(BoxrecRole.inspector);
+        const html: Cheerio = this.$(`<div>${inspectorStr}</div>`);
         const inspectors: BoxrecBasic[] = [];
 
         html.find("a").each((i: number, elem: CheerioElement) => {
-            const inspector: BoxrecBasic = BoxrecCommonTablesClass.parseNameAndId($(elem).text());
+            const inspector: BoxrecBasic = super.parseNameAndId(this.$(elem).text());
             inspectors.push(inspector);
         });
 
@@ -98,7 +110,8 @@ export class BoxrecPageEvent {
             },
         };
 
-        const html: Cheerio = $(`<div>${this._location}</div>`);
+        const locationStr: string = this.$(this.getEventResults()).find("thead table > tbody tr:nth-child(2) b").html() as string;
+        const html: Cheerio = this.$(`<div>${locationStr}</div>`);
         const links: Cheerio = html.find("a");
         const venueId: RegExpMatchArray | null = links.get(0).attribs.href.match(/(\d+)$/);
         const venueName: string | undefined = links.get(0).children[0].data;
@@ -114,7 +127,7 @@ export class BoxrecPageEvent {
         }
 
         if (locationMatches) {
-            const [, country, region, townId] = locationMatches;
+            const [, , , townId] = locationMatches;
 
             locationObject.location.id = parseInt(townId, 10);
             locationObject.location.town = links.get(1).children[0].data as string;
@@ -136,13 +149,14 @@ export class BoxrecPageEvent {
     }
 
     get matchmakers(): BoxrecBasic[] {
-        const html: Cheerio = $(`<div>${this._matchmaker}</div>`);
+        const matchMakersStr: string | void = this.parseEventData(BoxrecRole.matchmaker);
+        const html: Cheerio = this.$(`<div>${matchMakersStr}</div>`);
         const matchmaker: BoxrecBasic[] = [];
 
         html.find("a").each((i: number, elem: CheerioElement) => {
-            const href: RegExpMatchArray | null = $(elem).get(0).attribs.href.match(/(\d+)$/);
+            const href: RegExpMatchArray | null = this.$(elem).get(0).attribs.href.match(/(\d+)$/);
             if (href) {
-                const name: string = $(elem).text();
+                const name: string = this.$(elem).text();
                 matchmaker.push({
                     id: parseInt(href[1], 10),
                     name,
@@ -155,12 +169,13 @@ export class BoxrecPageEvent {
     }
 
     get promoters(): BoxrecPromoter[] {
-        const html: Cheerio = $(`<div>${this._promoter}</div>`);
+        const promoterStr: string | void = this.parseEventData(BoxrecRole.promoter);
+        const html: Cheerio = this.$(`<div>${promoterStr}</div>`);
         const promoter: BoxrecPromoter[] = [];
 
         html.find("a").each((i: number, elem: CheerioElement) => {
-            const href: string = $(elem).get(0).attribs.href;
-            const name: string = $(elem).text();
+            const href: string = this.$(elem).get(0).attribs.href;
+            const name: string = this.$(elem).text();
             let id: number | null = null;
             let company: string | null = null;
 
@@ -233,20 +248,26 @@ export class BoxrecPageEvent {
         return promoter;
     }
 
-    get television(): string[] | null {
-        const television: string = this._television;
+    get television(): string[] {
+        const television: string | void = this.parseEventData("television");
 
         if (television) {
             return television.split(",").map(item => trimRemoveLineBreaks(item));
         }
 
-        return null;
+        return [];
     }
 
-    private parseBouts(): void {
-        const tr: Cheerio = $("table#eventResults > tbody tr");
+    private getEventResults(): Cheerio {
+        return this.$("table#eventResults");
+    }
+
+    private parseBouts(): Array<[string, string | null]> {
+        const tr: Cheerio = this.$("table#eventResults > tbody tr");
+        const bouts: Array<[string, string | null]> = [];
+
         tr.each((i: number, elem: CheerioElement) => {
-            const boutId: string = $(elem).attr("id");
+            const boutId: string = this.$(elem).attr("id");
 
             // skip rows that are associated with the previous fight
             if (!boutId || boutId.includes("second")) {
@@ -255,7 +276,7 @@ export class BoxrecPageEvent {
 
             // we need to check to see if the next row is associated with this bout
             let isNextRowAssociated: boolean = false;
-            let nextRow: Cheerio | null = $(elem).next();
+            let nextRow: Cheerio | null = this.$(elem).next();
             let nextRowId: string = nextRow.attr("id");
 
             if (nextRowId) {
@@ -267,49 +288,39 @@ export class BoxrecPageEvent {
                 }
             } // else if no next bout exists
 
-            const html: string = $(elem).html() || "";
+            const html: string = this.$(elem).html() || "";
             const next: string | null = nextRow ? nextRow.html() : null;
-            this._bouts.push([html, next]);
+            bouts.push([html, next]);
         });
+
+        return bouts;
     }
 
-    private parseEventData(): void {
-        const eventResults: Cheerio = $("table#eventResults");
+    private parseEventData(role: string): string | null {
+        const eventResults: Cheerio = this.getEventResults();
 
-        $(eventResults).find("thead table tbody tr").each((i: number, elem: CheerioElement) => {
-            const tag: string = $(elem).find("td:nth-child(1)").text().trim();
-            const val: Cheerio = $(elem).find("td:nth-child(2)");
+        let result: string | null = null;
 
-            if (tag === "commission") {
-                this._commission = val.text();
+        this.$(eventResults).find("thead table tbody tr").each((i: number, elem: CheerioElement) => {
+            const tag: string = this.$(elem).find("td:nth-child(1)").text().trim();
+            const val: Cheerio = this.$(elem).find("td:nth-child(2)");
+
+            if (tag === "commission" && role === "commission") {
+                result = val.text();
             } else if (tag === "promoter") {
-                this._promoter = val.html();
+                result = val.html();
             } else if (tag === "matchmaker") {
-                this._matchmaker = val.html();
+                result = val.html();
             } else if (tag === "television") {
-                this._television = val.text();
+                result = val.text();
             } else if (tag === "doctor") {
-                this._doctor = val.html();
+                result = val.html();
             } else if (tag === "inspector") {
-                this._inspector = val.html();
+                result = val.html();
             }
         });
 
-        const date: string = $(eventResults).find("h2").text(); // ex. Saturday 5, May 2018
-        // if date hasn't been set, this will be an empty string, leave as null
-        if (date) {
-            this._date = new Date(date).toISOString().slice(0, 10);
-        }
-
-        const wikiHref: string | null = $(eventResults).find("h2").next().find(".bio_closedP").parent().attr("href");
-        if (wikiHref) {
-            const wikiLink: RegExpMatchArray | null = wikiHref.match(/(\d+)$/);
-            if (wikiLink && wikiLink[1]) {
-                this._id = wikiLink[1];
-            }
-        }
-
-        this._location = $(eventResults).find("thead table > tbody tr:nth-child(2) b").html();
+        return result;
     }
 
 }
